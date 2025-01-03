@@ -1,6 +1,5 @@
 #!/bin/bash
 
-# Check if the `dialog` command is installed
 
 HEIGHT=15
 WIDTH=40

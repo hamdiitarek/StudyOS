@@ -2,7 +2,15 @@
 #include <unistd.h>
 #include <stdio.h>
 #include <stdlib.h>
+#include <pthread.h>
 
+// Global variables
+int remaining_time;
+int is_work_session = 1;  // 1 for work session, 0 for break session
+int should_exit = 0;
+int WORK_DURATION, BREAK_DURATION;
+
+pthread_mutex_t lock;
 
 void display_timer(int minutes, int seconds, const char *message) {
     clear();
@@ -12,56 +20,74 @@ void display_timer(int minutes, int seconds, const char *message) {
     refresh();
 }
 
-void pomodoro_timer(int WORK_DURATION, int BREAK_DURATION) {
-    int remaining_time = WORK_DURATION;
-    int is_work_session = 1;  // 1 for work to start with it
+void *timer_thread(void *arg) {
+    while (!should_exit) {
+        pthread_mutex_lock(&lock);
+        if (remaining_time >= 0) {
+            beep();
+            int minutes = remaining_time / 60;
+            int seconds = remaining_time % 60;
+
+            if (is_work_session) {
+                display_timer(minutes, seconds, "Work Session");
+            } else {
+                display_timer(minutes, seconds, "Break Session");
+            }
+
+            remaining_time--;
+        } else {
+            if (is_work_session) {
+                remaining_time = BREAK_DURATION;
+                is_work_session = 0;
+            } else {
+                remaining_time = WORK_DURATION;
+                is_work_session = 1;
+            }
+        }
+        pthread_mutex_unlock(&lock);
+        sleep(1);
+    }
+    return NULL;
+}
+
+int main(int argc, char *argv[]) {
+    if (argc != 3) {
+        fprintf(stderr, "Usage: %s <work_duration_minutes> <break_duration_minutes>\n", argv[0]);
+        return 1;
+    }
+
+    WORK_DURATION = atoi(argv[1]) * 60;  
+    BREAK_DURATION = atoi(argv[2]) * 60;
+    remaining_time = WORK_DURATION;
 
     // Initialize ncurses
     initscr();
     noecho();
     curs_set(FALSE);
-    timeout(1000);  // 1-second timeout for non-blocking input
+    timeout(100);  // 100ms timeout for non-blocking input
 
-    while (1) {
-        
-        int minutes = remaining_time / 60;
-        int seconds = remaining_time % 60;
+    pthread_mutex_init(&lock, NULL);
 
-        
-        if (is_work_session) {
-            display_timer(minutes, seconds, "Work Session");
-        } else {
-            display_timer(minutes, seconds, "Break Session");
-        }
+    // Create the timer thread
+    pthread_t timer_tid;
+    pthread_create(&timer_tid, NULL, timer_thread, NULL);
 
-        
-        remaining_time--;
-
+    while (!should_exit) {
         int ch = getch();
         if (ch == 'q' || ch == 'Q') {
+            pthread_mutex_lock(&lock);
+            should_exit = 1;
+            pthread_mutex_unlock(&lock);
             break;
-        }
-
-        if (remaining_time < 0) {
-            if (is_work_session) {
-                remaining_time = BREAK_DURATION;  // Switch to break
-                is_work_session = 0;
-            } else {
-                remaining_time = WORK_DURATION;  // Switch to work
-                is_work_session = 1;
-            }
         }
     }
 
-    // End ncurses mode
+    // Wait thread to finish
+    pthread_join(timer_tid, NULL);
+
+    // Cleanup ncurses and mutex
     endwin();
-}
+    pthread_mutex_destroy(&lock);
 
-int main(int argc, char *argv[]) {
-
-    int WORK_DURATION = atoi(argv[1])*60;  
-    int BREAK_DURATION = atoi(argv[2])*60; 
-    printf("Pomodoro Timer: Press 'q' to quit.\n");
-    pomodoro_timer(WORK_DURATION, BREAK_DURATION);
     return 0;
 }
