@@ -12,6 +12,13 @@ int WORK_DURATION, BREAK_DURATION;
 
 pthread_mutex_t lock;
 
+void display_alert(const char *title, const char *message) {
+    char command[256];
+    
+    snprintf(command, sizeof(command), "notify-send '%s' '%s'", title, message);
+    system(command);
+}
+
 void display_timer(int minutes, int seconds, const char *message) {
     clear();
     mvprintw(5, 10, "%s", message);
@@ -24,7 +31,7 @@ void *timer_thread(void *arg) {
     while (!should_exit) {
         pthread_mutex_lock(&lock);
         if (remaining_time >= 0) {
-            beep();
+            
             int minutes = remaining_time / 60;
             int seconds = remaining_time % 60;
 
@@ -37,9 +44,11 @@ void *timer_thread(void *arg) {
             remaining_time--;
         } else {
             if (is_work_session) {
+                display_alert("StudyOS Pomodoro Timer", "Time to take a break!");
                 remaining_time = BREAK_DURATION;
                 is_work_session = 0;
             } else {
+                display_alert("StudyOS Pomodoro Timer", "Get Back To Work!");
                 remaining_time = WORK_DURATION;
                 is_work_session = 1;
             }
