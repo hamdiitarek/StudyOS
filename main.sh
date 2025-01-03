@@ -1,5 +1,6 @@
 #!/bin/bash
 
+#
 
 HEIGHT=15
 WIDTH=40
