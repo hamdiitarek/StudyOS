@@ -12,10 +12,10 @@ int WORK_DURATION, BREAK_DURATION;
 
 pthread_mutex_t lock;
 
-void display_alert(const char *title, const char *message) {
+void display_alert(const char *message, const char *title) {
     char command[256];
     
-    snprintf(command, sizeof(command), "notify-send '%s' '%s'", title, message);
+    snprintf(command, sizeof(command), "notify-send '%s' --app-name=StudyOS-%s", message, title);
     system(command);
 }
 
@@ -44,11 +44,11 @@ void *timer_thread(void *arg) {
             remaining_time--;
         } else {
             if (is_work_session) {
-                display_alert("StudyOS Pomodoro Timer", "Time to take a break!");
+                display_alert("Time to take a break!", "Pomodoro Timer");
                 remaining_time = BREAK_DURATION;
                 is_work_session = 0;
             } else {
-                display_alert("StudyOS Pomodoro Timer", "Get Back To Work!");
+                display_alert("Get Back To Work!", "Pomodoro Timer");
                 remaining_time = WORK_DURATION;
                 is_work_session = 1;
             }
@@ -64,6 +64,8 @@ int main(int argc, char *argv[]) {
         fprintf(stderr, "Usage: %s <work_duration_minutes> <break_duration_minutes>\n", argv[0]);
         return 1;
     }
+
+    display_alert("Time to take a break!", "Pomodoro Timer");
 
     WORK_DURATION = atoi(argv[1]) * 60;  
     BREAK_DURATION = atoi(argv[2]) * 60;
