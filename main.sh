@@ -24,6 +24,89 @@ INFO
 }
 
 
+course_manager() {
+    C_SOURCE="course.c"
+    C_BINARY="./course_out"
+    HEIGHT=15
+    WIDTH=40
+    CHOICE_HEIGHT=6
+    TITLE="Course Management System"
+    MENU="Choose an option:"
+
+    rubbish="rubbish"
+    choice=0
+
+    OPTIONS=(
+        1 "Show existing Courses"
+        2 "Delete all Courses"
+        3 "Add Course"
+        4 "Delete Course"
+        5 "Check Assignments"
+    )
+
+    if [ ! -f "$C_BINARY" ]; then
+        echo "Compiling $C_SOURCE..."
+        gcc -pthread -o "$C_BINARY" "$C_SOURCE"
+        if [ $? -ne 0 ]; then
+            echo "Error: Compilation failed."
+            exit 1
+        fi
+        echo "Compilation successful."
+    fi
+
+    LOG_FILE="courses.log"
+    if [ ! -f "$LOG_FILE" ]; then
+        echo "Creating courses.log file..."
+        touch "$LOG_FILE"
+        if [ $? -ne 0 ]; then
+            echo "Error: Could not create courses.log file."
+            exit 1
+        fi
+        echo "courses.log file created successfully."
+    fi
+
+    while true
+    do
+
+        choice=$(dialog --clear \
+                    --title "$TITLE" \
+                    --menu "$MENU" \
+                    $HEIGHT $WIDTH $CHOICE_HEIGHT \
+                    "${OPTIONS[@]}" \
+                    2>&1 >/dev/tty)
+        clear
+
+        case $choice in
+            1)
+                dialog --msgbox "Show the existing Courses" 6 50
+                $C_BINARY 1 $rubbish
+                ;;
+            2)
+                dialog --msgbox "Deleting all the Courses" 6 50
+                $C_BINARY 2 $rubbish
+                ;;
+            3)
+                dialog --msgbox "Adding a Course" 6 50
+                subject=$(dialog --title "Subject Input" --inputbox "Enter the subject name:" 10 50 3>&1 1>&2 2>&3)
+                $C_BINARY 3 "$subject"
+                ;;
+            4)
+                dialog --msgbox "Deleting a Course" 6 50
+                dialog --title "Log File" --textbox "courses.log" 15 50
+                course_id=$(dialog --title "Input ID" --inputbox "Enter an integer ID:" 15 50 3>&1 1>&2 2>&3)
+                $C_BINARY 4 $course_id
+                ;;
+            *)
+                dialog --msgbox "Exit" 6 50
+                clear
+                exit 0
+                ;;
+        esac
+
+    done
+}
+
+
 assignment_manager() {
     # Variables
     C_SOURCE="assignment_manager.c"
@@ -195,7 +278,7 @@ while true; do
             pids+=($!)
             ;;
         2)
-            
+            course_manager
             ;;
         3)
             assignment_manager
