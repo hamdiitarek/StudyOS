@@ -1,0 +1,422 @@
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+#include <pthread.h>
+#include <unistd.h>
+
+#define MAX_COURSES 10
+#define MAX_ASSIGNMENTS 20
+#define MAX_NAME_LENGTH 150
+#define MAX_LINES 1000
+#define MAX_LINE_LENGTH 256
+
+typedef struct {
+    char name[MAX_NAME_LENGTH];
+    int difficulty;
+    int time_required;
+    int is_complete;
+    char due_date[MAX_NAME_LENGTH];
+} Assignment;
+
+typedef struct {
+    char name[MAX_NAME_LENGTH];
+    Assignment assignments[MAX_ASSIGNMENTS];
+    int assignment_count;
+    int course_id;
+} Course;
+
+typedef struct {
+    Course courses[MAX_COURSES];
+    int course_count;
+    pthread_mutex_t mutex;
+} CourseManager;
+
+CourseManager manager;
+
+void init_course_manager() {
+    manager.course_count = 0;
+    pthread_mutex_init(&manager.mutex, NULL);
+}
+
+
+void add_course(const char* name, const char* filename) {
+    pthread_mutex_lock(&manager.mutex);
+
+    if (manager.course_count >= MAX_COURSES) {
+        pthread_mutex_unlock(&manager.mutex);
+        printf("Error: Maximum course limit reached.\n");
+        return;
+    }
+
+    Course* course = &manager.courses[manager.course_count];
+    strncpy(course->name, name, MAX_NAME_LENGTH - 1);
+    course->assignment_count = 0;
+    course->course_id = manager.course_count + 1;
+    manager.course_count++;
+
+    FILE* file = fopen(filename, "a");
+    if (!file) {
+        perror("Error opening file");
+        pthread_mutex_unlock(&manager.mutex);
+        return;
+    }
+
+    fprintf(file, "%d|%s\n", course->course_id, course->name); // No assignments yet
+    fclose(file);
+
+    pthread_mutex_unlock(&manager.mutex);
+}
+
+void add_assignment(int course_id, const char* name, int difficulty, int time, const char* due_date, const char* filename) {
+    pthread_mutex_lock(&manager.mutex);
+
+    if (course_id < 1 || course_id > manager.course_count) {
+        printf("Error: Invalid course ID.\n");
+        pthread_mutex_unlock(&manager.mutex);
+        return;
+    }
+
+    Course* course = &manager.courses[course_id - 1];
+    if (course->assignment_count >= MAX_ASSIGNMENTS) {
+        printf("Error: Maximum assignment limit reached.\n");
+        pthread_mutex_unlock(&manager.mutex);
+        return;
+    }
+
+    Assignment* assignment = &course->assignments[course->assignment_count];
+    strncpy(assignment->name, name, MAX_NAME_LENGTH - 1);
+    assignment->difficulty = difficulty;
+    assignment->time_required = time;
+    assignment->is_complete = 0;
+    strncpy(assignment->due_date, due_date, MAX_NAME_LENGTH - 1);
+    course->assignment_count++;
+
+    FILE* file = fopen(filename, "r+");
+    if (!file) {
+        perror("Error opening file");
+        pthread_mutex_unlock(&manager.mutex);
+        return;
+    }
+
+    char lines[MAX_LINES][MAX_LINE_LENGTH];
+    int line_count = 0;
+
+    while (fgets(lines[line_count], MAX_LINE_LENGTH, file)) {
+        line_count++;
+    }
+    fclose(file);
+
+    file = fopen(filename, "w");
+    if (!file) {
+        perror("Error reopening file");
+        pthread_mutex_unlock(&manager.mutex);
+        return;
+    }
+
+    for (int i = 0; i < line_count; i++) {
+        if (i == course_id - 1) {
+            fprintf(file, "%d|%s|%d", course->course_id, course->name, course->assignment_count);
+            for (int j = 0; j < course->assignment_count; j++) {
+                Assignment* a = &course->assignments[j];
+                fprintf(file, "|%d,%s,%d,%d,%d,%s", j + 1, a->name, a->difficulty, a->time_required, a->is_complete, a->due_date);
+            }
+            fprintf(file, "\n");
+        } else {
+            fputs(lines[i], file);
+        }
+    }
+
+    fclose(file);
+    pthread_mutex_unlock(&manager.mutex);
+}
+
+void delete_assignment(int course_id, int assignment_id, const char* filename) {
+    pthread_mutex_lock(&manager.mutex);
+
+    if (course_id < 1 || course_id > manager.course_count) {
+        printf("Error: Invalid course ID.\n");
+        pthread_mutex_unlock(&manager.mutex);
+        return;
+    }
+
+    Course* course = &manager.courses[course_id - 1];
+    if (assignment_id < 1 || assignment_id > course->assignment_count) {
+        printf("Error: Invalid assignment ID.\n");
+        pthread_mutex_unlock(&manager.mutex);
+        return;
+    }
+
+    for (int i = assignment_id - 1; i < course->assignment_count - 1; i++) {
+        course->assignments[i] = course->assignments[i + 1];
+    }
+    course->assignment_count--;
+
+    FILE* file = fopen(filename, "r+");
+    if (!file) {
+        perror("Error opening file");
+        pthread_mutex_unlock(&manager.mutex);
+        return;
+    }
+
+    char lines[MAX_LINES][MAX_LINE_LENGTH];
+    int line_count = 0;
+
+    while (fgets(lines[line_count], MAX_LINE_LENGTH, file)) {
+        line_count++;
+    }
+    fclose(file);
+
+    file = fopen(filename, "w");
+    if (!file) {
+        perror("Error reopening file");
+        pthread_mutex_unlock(&manager.mutex);
+        return;
+    }
+
+    for (int i = 0; i < line_count; i++) {
+        if (i == course_id - 1) {
+            fprintf(file, "%d|%s|%d", course->course_id, course->name, course->assignment_count);
+            for (int j = 0; j < course->assignment_count; j++) {
+                Assignment* a = &course->assignments[j];
+                fprintf(file, "|%d,%s,%d,%d,%d,%s", j + 1, a->name, a->difficulty, a->time_required, a->is_complete, a->due_date);
+            }
+            fprintf(file, "\n");
+        } else {
+            fputs(lines[i], file);
+        }
+    }
+
+    fclose(file);
+    pthread_mutex_unlock(&manager.mutex);
+}
+
+void submit_assignment(int course_id, int assignment_id, const char* file_path, const char* filename) {
+    pthread_mutex_lock(&manager.mutex);
+
+    if (course_id < 1 || course_id > manager.course_count) {
+        printf("Error: Invalid course ID.\n");
+        pthread_mutex_unlock(&manager.mutex);
+        return;
+    }
+
+    Course* course = &manager.courses[course_id - 1];
+    if (assignment_id < 1 || assignment_id > course->assignment_count) {
+        printf("Error: Invalid assignment ID.\n");
+        pthread_mutex_unlock(&manager.mutex);
+        return;
+    }
+
+    Assignment* assignment = &course->assignments[assignment_id - 1];
+
+    // Ensure the submissions directory and course-specific folder exist
+    char course_folder[MAX_LINE_LENGTH];
+    snprintf(course_folder, sizeof(course_folder), "submissions/%s", course->name);
+    char mkdir_command[MAX_LINE_LENGTH + 20];
+    snprintf(mkdir_command, sizeof(mkdir_command), "mkdir -p \"%s\"", course_folder);
+    system(mkdir_command);
+
+    // Check if the source file exists
+    if (access(file_path, F_OK) != 0) {
+        printf("Warning: File '%s' not found. Creating a placeholder file.\n", file_path);
+
+        // Create a placeholder file
+        FILE* placeholder = fopen(file_path, "w");
+        if (!placeholder) {
+            perror("Error creating placeholder file");
+            pthread_mutex_unlock(&manager.mutex);
+            return;
+        }
+        fprintf(placeholder, "Placeholder file for assignment submission.\n");
+        fclose(placeholder);
+    }
+
+    // Construct the destination file path inside the course folder
+    char destination_path[MAX_LINE_LENGTH + MAX_NAME_LENGTH + 5];
+    snprintf(destination_path, sizeof(destination_path), "%s/%s.txt", course_folder, assignment->name);
+
+    // Execute the copy command
+    char command[MAX_LINE_LENGTH + MAX_LINE_LENGTH + MAX_NAME_LENGTH + 10];
+    snprintf(command, sizeof(command), "cp \"%s\" \"%s\"", file_path, destination_path);
+
+    int result = system(command);
+    if (result != 0) {
+        printf("Error: Failed to copy file. Please check permissions.\n");
+    } else {
+        printf("Assignment submitted successfully: %s\n", destination_path);
+
+        // Mark the assignment as complete
+        assignment->is_complete = 1;
+
+        // Update the courses.log file
+        FILE* file = fopen(filename, "w");
+        if (!file) {
+            perror("Error updating courses.log");
+            pthread_mutex_unlock(&manager.mutex);
+            return;
+        }
+
+        for (int i = 0; i < manager.course_count; i++) {
+            Course* c = &manager.courses[i];
+            fprintf(file, "%d|%s|%d", c->course_id, c->name, c->assignment_count);
+            for (int j = 0; j < c->assignment_count; j++) {
+                Assignment* a = &c->assignments[j];
+                fprintf(file, "|%d,%s,%d,%d,%d,%s", j + 1, a->name, a->difficulty, a->time_required,
+                        a->is_complete, a->due_date);
+            }
+            fprintf(file, "\n");
+        }
+
+        fclose(file);
+    }
+
+    pthread_mutex_unlock(&manager.mutex);
+}
+
+
+void view_assignments(int course_id) {
+    pthread_mutex_lock(&manager.mutex);
+
+    if (course_id < 1 || course_id > manager.course_count) {
+        printf("Error: Invalid course ID.\n");
+        pthread_mutex_unlock(&manager.mutex);
+        return;
+    }
+
+    Course* course = &manager.courses[course_id - 1];
+    printf("Assignments for Course %s:\n", course->name);
+    for (int i = 0; i < course->assignment_count; i++) {
+        Assignment* assignment = &course->assignments[i];
+        printf("%d: %s, Difficulty: %d, Time: %d, Due: %s, Complete: %s\n",
+               i + 1, assignment->name, assignment->difficulty, assignment->time_required,
+               assignment->due_date, assignment->is_complete ? "Yes" : "No");
+    }
+
+    pthread_mutex_unlock(&manager.mutex);
+}
+
+void load_courses(const char* filename) {
+    pthread_mutex_lock(&manager.mutex);
+
+    FILE* file = fopen(filename, "r");
+    if (!file) {
+        perror("Error opening file");
+        pthread_mutex_unlock(&manager.mutex);
+        return;
+    }
+
+    manager.course_count = 0;
+    char line[MAX_LINE_LENGTH];
+    
+    while (fgets(line, sizeof(line), file)) {
+        Course* course = &manager.courses[manager.course_count];
+        char* token = strtok(line, "|");
+        
+        // Parse course_id
+        course->course_id = atoi(token);
+
+        // Parse course name
+        token = strtok(NULL, "|");
+        if (token) {
+            strncpy(course->name, token, MAX_NAME_LENGTH - 1);
+            course->name[MAX_NAME_LENGTH - 1] = '\0'; // Ensure null-termination
+        }
+
+        // Parse number of assignments
+        token = strtok(NULL, "|");
+        course->assignment_count = atoi(token);
+
+        // Parse assignments
+        for (int i = 0; i < course->assignment_count; i++) {
+            Assignment* assignment = &course->assignments[i];
+            
+            // Read assignment details
+            token = strtok(NULL, "|");
+            if (token) {
+                int assignment_index;
+                int parsed = sscanf(token, "%d,%[^,],%d,%d,%d,%s", 
+                                     &assignment_index, assignment->name, 
+                                     &assignment->difficulty, &assignment->time_required, 
+                                     &assignment->is_complete, assignment->due_date);
+
+                if (parsed != 6) {
+                    fprintf(stderr, "Error parsing assignment %d\n", i);
+                    break; // Handle parsing error gracefully
+                }
+            }
+        }
+
+        manager.course_count++;
+    }
+
+    fclose(file);
+    pthread_mutex_unlock(&manager.mutex);
+}
+
+void view_all_assignments() {
+    pthread_mutex_lock(&manager.mutex);
+
+    for (int i = 0; i < manager.course_count; i++) {
+        Course* course = &manager.courses[i];
+        printf("\nAssignments for Course -> %s:\n", course->name);
+        for (int j = 0; j < course->assignment_count; j++) {
+            Assignment* assignment = &course->assignments[j];
+            printf("%d: %s, Difficulty: %d, Time: %d, Due: %s, Complete: %s\n",
+                   j + 1, assignment->name, assignment->difficulty, assignment->time_required,
+                   assignment->due_date, assignment->is_complete ? "Yes" : "No");
+        }
+    }
+
+    pthread_mutex_unlock(&manager.mutex);
+}
+
+
+int main(int argc, char* argv[]) {
+    
+    init_course_manager();
+    load_courses("courses.log");
+    
+    if (argc < 2) {
+        view_all_assignments();
+        return 0;
+    }
+
+    int option = atoi(argv[1]);
+
+    switch (option) {
+        case 1:
+            
+            break;
+        case 2:
+            if (argc < 3) {
+                printf("Error: Course ID required.\n");
+                return 1;
+            }
+            view_assignments(atoi(argv[2]));
+            break;
+        case 3:
+            if (argc < 7) {
+                printf("Error: Course ID, name, difficulty, time, and due date required.\n");
+                return 1;
+            }
+            add_assignment(atoi(argv[2]), argv[3], atoi(argv[4]), atoi(argv[5]), argv[6], "courses.log");
+            break;
+        case 4:
+            if (argc < 5) {
+                printf("Error: Course ID, assignment ID, and file path required.\n");
+                return 1;
+            }
+            submit_assignment(atoi(argv[2]), atoi(argv[3]), argv[4], "courses.log");
+            break;
+        case 5:
+            if (argc < 4) {
+                printf("Error: Course ID and assignment ID required.\n");
+                return 1;
+            }
+            delete_assignment(atoi(argv[2]), atoi(argv[3]), "courses.log");
+            break;
+        default:
+            printf("Error: Invalid option.\n");
+            return 1;
+    }
+    return 0;
+}

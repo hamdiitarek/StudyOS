@@ -1,0 +1,40 @@
+Quiz:
+
+PART '1'
+- Create 3 folders (dir1, dir2, and dir3).
+- at the same place Create 3 files (file1, file2, and file3).
+- enter dir2 and create 3 files (file1, file2, and file3).
+
+- Enter file1 and type (40 newline 200 newline 1000 newline 3)
+- Sort numbers in file1 NUMERICALLY and make the sorted data overwite the unsorted data in the file
+- Display the sorted content of file1 using cli
+
+- Without opening file3 type your name in it.
+- Using new command and Without overwiting file3 type your id in a newline in the same file.
+- Display the content of the file
+
+- Now display ONLY number of lines in file3.
+
+- find all the files start with the letter 'f' Only in the current directory.
+- go to home
+- find all the files named 'file1' in your directory and their sub-directories.
+- find all files include your name inside it in the your directory and sub-directories (ONLY PRINT FILE NAMES).
+=======================================================================
+PART '2': Program using Shell & C
+- Implement a C program that receives 6 parameters (subject1, its grade, subject2, its grade, subject3, and its grade) then
+return each subject and in front of it its percentage (user's grade * 100)/60 then print user's total degrees, and user's total percentage
+(user's total grades * 100)/60
+BUT NOTICE these IMPORTANT NOTES:
+	1. The main function must receive its 6 parameters through CLI NOT using scanf and CLI must receive the 6 parameters from the user.
+	2. Prompt the user using shell like (Enter the first subject, then receive it, then Enter the grade of the first subject and so on)
+	3. Validate the user's answers, which means if the user enter a number larger than 60 returns (Invalid input) and terminate program.
+	4. Finally make the output of your C program (SYSTEM COMMAND) named 'cool', which means wherever I am standing in my OS
+and say 'cool' without using any path, my program executes.
+like this:
+>>cool
+>> Enter your first subject:
+>> math
+>> Enter degree of the first subject MAX 60:
+>> 50
+>> Enter your second subject
+
