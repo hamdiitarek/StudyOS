@@ -3,6 +3,15 @@
 # Declare an array to save PIDs
 declare -a pids
 
+show_logo() {
+    cat << "EOF"
+▗▄▄▖▗▄▄▄▖▗▖ ▗▖▗▄▄▄▗▖  ▗▖▗▄▖  ▗▄▄▖      Made By: Hamdi Awad 
+▐▌     █  ▐▌ ▐▌▐▌  █▝▚▞▘▐▌ ▐▌▐▌                  Omar Abdulaal
+ ▝▀▚▖  █  ▐▌ ▐▌▐▌  █ ▐▌ ▐▌ ▐▌ ▝▀▚▖               Omar Abdalrady 
+▗▄▄▞▘  █  ▝▚▄▞▘▐▙▄▄▀ ▐▌ ▝▚▄▞▘▗▄▄▞▘                               
+EOF
+}  
+
 show_info() {
     cat << INFO
  ▗▄▄▖▗▄▄▄▖▗▖ ▗▖▗▄▄▄▗▖  ▗▖▗▄▖  ▗▄▄▖      Made By: Hamdi Awad 
@@ -30,12 +39,12 @@ assignment_manager() {
     C_BINARY="./assignmnet_courses_out"
     HEIGHT=15
     WIDTH=40
-    CHOICE_HEIGHT=5
+    CHOICE_HEIGHT=4
     TITLE="Course Management System"
     MENU="Choose an option:"
 
     # Variables Assignment
-    CHOICE_HEIGHT2=6
+    CHOICE_HEIGHT2=5
     TITLE2="Assignment Management System"
 
     # Dialog Course menu options
@@ -44,7 +53,6 @@ assignment_manager() {
         2 "Add Course"
         3 "Delete Course"
         4 "Check Assignments"
-        5 "Back to Main"
     )
 
     # Dialog Assignment menu options
@@ -54,7 +62,6 @@ assignment_manager() {
         3 "Add Assignment"
         4 "Submit Assignment"
         5 "Delete Assignment"
-        6 "Back to Courses"
     )
 
     # Check if the C binary exists; compile if needed
@@ -80,11 +87,13 @@ assignment_manager() {
         echo "courses.log file created successfully."
     fi
 
-    # Main menu loop
+    # Courses loop
     while true; 
     do
         choice=$(dialog --clear \
                     --title "$TITLE" \
+                    --ok-label "Proceed" \
+                    --cancel-label "Back to StudyOS" \
                     --menu "$MENU" \
                     $HEIGHT $WIDTH $CHOICE_HEIGHT \
                     "${OPTIONS2[@]}" \
@@ -119,17 +128,26 @@ assignment_manager() {
                 $C_BINARY 3 $COURSE_ID
                 ;;
             4)
-                while true 
+                exit_loop=true
+                while $exit_loop 
                 do
 
                     CHOICE=$(dialog --clear \
                         --title "$TITLE2" \
+                        --ok-label "Proceed" \
+                        --cancel-label "Back to Courses" \
                         --menu "$MENU" \
                         $HEIGHT $WIDTH $CHOICE_HEIGHT2 \
                         "${OPTIONS3[@]}" \
                         2>&1 >/dev/tty)
 
                     clear
+                    
+                    if [ $? -eq 1 ]; then
+                        echo "Returning to Courses Menu..."
+                        # You can call another function or menu here instead of breaking
+                        exit_loop=false
+                    fi
 
                     case $CHOICE in
                         1) # View All Assignments
@@ -189,24 +207,14 @@ assignment_manager() {
                                 dialog --msgbox "Course ID and assignment ID are required to delete an assignment." 10 40
                             fi
                             ;;
-                        6) # Exit
-                            dialog --msgbox "Back to courses" 6 50
-                            clear
-                            break 
-                            ;;
                         *) # Invalid choice
-                            exit 0
+                            break
                             ;;
                     esac
                 done
-                ;;
-            5)
-                dialog --msgbox "Back to main" 6 50
-                clear
-                return
+                
                 ;;
             *)
-                dialog --msgbox "Exit" 6 50
                 clear
                 return
                 ;;
@@ -226,12 +234,13 @@ OPTIONS=(
     2 "Course and Assignment Manager"
     3 "Music Player"
     4 "PC Info"
-    5 "Exit"
 )
 
 while true; do
     CHOICE=$(dialog --clear \
                 --title "$TITLE" \
+                --ok-label "Proceed" \
+                --cancel-label "Exit StudyOS" \
                 --menu "$MENU" \
                 $HEIGHT $WIDTH $CHOICE_HEIGHT \
                 "${OPTIONS[@]}" \
@@ -273,14 +282,15 @@ while true; do
             dialog --textbox "$temp_file" 20 70
             rm -f "$temp_file"
             ;;
-        5)
-            dialog --msgbox "Goodbye!" 10 40
+        
+        *)
+            temp_logo=$(mktemp)
+            show_logo > "$temp_logo"
+            dialog --textbox "$temp_logo" 10 70
+            rm -f "$temp_file"
             kill -9 "${pids[@]}"
             clear
             exit 0
-            ;;
-        *)
-            echo "Invalid option!"
             ;;
     esac
 done
