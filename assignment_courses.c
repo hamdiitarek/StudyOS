@@ -444,6 +444,7 @@ int main(int argc, char* argv[]) {
     load_courses(filename);
 
     int case_id = atoi(argv[1]);
+    int option = 0;
 
     switch (case_id)
     {
@@ -472,7 +473,7 @@ int main(int argc, char* argv[]) {
             break;
         
         case 4:
-            int option = atoi(argv[2]);
+        option = atoi(argv[2]);
             switch (option) 
             {
                 case 1:

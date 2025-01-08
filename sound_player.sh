@@ -10,16 +10,8 @@ while true; do
         5 "Exit" 3>&1 1>&2 2>&3)
 
     clear
-
-    # Ensure the audio processor is compiled first
-    if [ ! -f "./audio_processor" ]; then
-        gcc -pthread -o audio_processor audio_processor.c
-        if [ $? -ne 0 ]; then
-            echo "Error: Compilation failed."
-            exit 1
-        fi
-    fi
-
+    gcc -pthread -o audio_processor audio_processor.c
+    
     case $choice in
         1)
             if [ ! -z "$sound_pid" ]; then

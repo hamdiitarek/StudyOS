@@ -254,7 +254,7 @@ while true; do
                             --inputbox "Please Enter Break Session Time In Minutes:" 8 40 \
                             --output-fd 1)
 
-            gcc -o pomodoroout pomodoro.c -lncurses
+            gcc -o pomodoroout pomodoro.c -lncurses -pthread
             clear
             setsid gnome-terminal -- ./pomodoroout $work_input $break_input &
             pids+=($!)
