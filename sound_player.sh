@@ -1,5 +1,8 @@
 #!/bin/bash
 
+# to ignore the SIGINT and do nothing when the signal is recieved
+trap '' SIGINT
+
 while true; do
     choice=$(dialog --clear --title "Sound Player" \
         --menu "Choose a sound to play:" 15 50 5 \
@@ -61,7 +64,5 @@ while true; do
             exit 0
             ;;
         *)
-            dialog --msgbox "Invalid choice. Please try again." 6 40
-            ;;
     esac
 done

@@ -18,6 +18,17 @@ void handle_stop_signal(int signum) {
         kill(playback_pid, SIGKILL); 
     }
 }
+void handle_INT_signal(int signum) { 
+    char msg[] = "CTRL + C pressed, Not Stopping";
+    char command[128];
+
+    system("clear");
+
+    snprintf(command, sizeof(command), "dialog --msgbox \"%s\" 6 40", msg);
+
+    system(command);
+
+}
 
 void *play_sound(void *arg) {
     char *sound_file = (char *)arg;
@@ -60,6 +71,7 @@ int main(int argc, char *argv[]) {
     snprintf(sound_path, sizeof(sound_path), "%s%s", SOUND_DIR, argv[1]);
 
     signal(SIGTERM, handle_stop_signal);
+    signal(SIGINT, handle_INT_signal);
 
     pthread_t thread_id;
 
@@ -70,6 +82,6 @@ int main(int argc, char *argv[]) {
 
     pthread_join(thread_id, NULL);
 
-    // printf("Playback process exiting.\n");   
+
     return 0;
 }

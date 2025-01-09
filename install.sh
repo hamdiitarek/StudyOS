@@ -26,6 +26,7 @@ apt -y install libncurses5-dev libncursesw5-dev
 apt -y install zenity
 apt -y install dialog
 apt -y install libnotify-bin
+apt -y install alsa-utils
 
 # Copy files to /usr/local/bin
 cp ./main2.sh /usr/local/bin/StudyOS
