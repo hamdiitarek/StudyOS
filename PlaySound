@@ -1,0 +1,20 @@
+#!/bin/bash
+
+#this shell is a command so you can play sound through it, could be modified to be global
+
+#if nothing is written after PlaySound
+if [ $# -ne 1 ]; then
+    echo "Usage: PlaySound <sound_file>"
+    exit 1
+fi
+
+SOUND_FILE=$1
+
+
+if [ ! -f "./sounds/$SOUND_FILE" ]; then
+    echo "Error: File './sounds/$SOUND_FILE' not found."
+    exit 1
+fi
+
+gcc -pthread -o audio_processor audio_processor.c
+./audio_processor "$SOUND_FILE"
