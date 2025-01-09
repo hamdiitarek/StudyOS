@@ -36,7 +36,7 @@ INFO
 assignment_manager() {
     # Course Assignment
     C_SOURCE="assignment_courses.c"
-    C_BINARY="./assignmnet_courses_out"
+    C_BINARY="./assignment_courses"
     HEIGHT=15
     WIDTH=40
     CHOICE_HEIGHT=4
@@ -63,29 +63,6 @@ assignment_manager() {
         4 "Submit Assignment"
         5 "Delete Assignment"
     )
-
-    # Check if the C binary exists; compile if needed
-    if [ ! -f "$C_BINARY" ]; then
-        echo "Compiling $C_SOURCE..."
-        gcc -pthread -o "$C_BINARY" "$C_SOURCE"
-        if [ $? -ne 0 ]; then
-            echo "Error: Compilation failed."
-            exit 1
-        fi
-        echo "Compilation successful."
-    fi
-
-    # Check if the courses.log file exists; create if needed
-    LOG_FILE="courses.log"
-    if [ ! -f "$LOG_FILE" ]; then
-        echo "Creating courses.log file..."
-        touch "$LOG_FILE"
-        if [ $? -ne 0 ]; then
-            echo "Error: Could not create courses.log file."
-            exit 1
-        fi
-        echo "courses.log file created successfully."
-    fi
 
     # Courses loop
     while true; 
@@ -222,6 +199,9 @@ assignment_manager() {
     done
 }
 
+USER_NAME=$(logname)
+
+cd /home/$USER_NAME/Documents/StudyOS/applications
 
 HEIGHT=15
 WIDTH=40
@@ -263,9 +243,8 @@ while true; do
                             --inputbox "Please Enter Break Session Time In Minutes:" 8 40 \
                             --output-fd 1)
 
-            gcc -o pomodoroout pomodoro.c -lncurses -pthread
             clear
-            setsid gnome-terminal -- ./pomodoroout $work_input $break_input &
+            gnome-terminal -- ./pomodoro $work_input $break_input &
             pids+=($!)
             ;;
         2)
@@ -273,7 +252,7 @@ while true; do
             clear
             ;;
         3)
-            setsid gnome-terminal -- ./sound_player.sh &
+            gnome-terminal -- ./sound_player.sh &
             pids+=($!)
             ;;
         4) 

@@ -2,6 +2,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <pthread.h>
+#include <sys/stat.h>
 #include <unistd.h>
 
 #define MAX_COURSES 10
@@ -245,7 +246,7 @@ void delete_assignment(int course_id, int assignment_id, const char* filename) {
     pthread_mutex_unlock(&manager.mutex);
 }
 
-void submit_assignment(int course_id, int assignment_id, const char* file_path, const char* filename) {
+void submit_assignment(int course_id, int assignment_id, char* file_path, char* filename, char* submissions_dir) {
     pthread_mutex_lock(&manager.mutex);
 
     if (course_id < 1 || course_id > manager.course_count) {
@@ -265,7 +266,7 @@ void submit_assignment(int course_id, int assignment_id, const char* file_path, 
 
     // Ensure the submissions directory and course-specific folder exist
     char course_folder[MAX_LINE_LENGTH];
-    snprintf(course_folder, sizeof(course_folder), "submissions/%s", course->name);
+    snprintf(course_folder, sizeof(course_folder), "%s/%s", submissions_dir, course->name);
     char mkdir_command[MAX_LINE_LENGTH + 20];
     snprintf(mkdir_command, sizeof(mkdir_command), "mkdir -p \"%s\"", course_folder);
     system(mkdir_command);
@@ -435,12 +436,39 @@ void view_all_assignments() {
 
     pthread_mutex_unlock(&manager.mutex);
 }
+char* get_username() {
+    char* username = getenv("USER");
+    if (username == NULL) {
+        exit(1);
+    }
+    return username;
+}
 
 
 int main(int argc, char* argv[]) {
     
     init_course_manager();
-    char filename[MAX_NAME_LENGTH] = "courses.log";
+
+    char *username = get_username();
+
+    char filename[MAX_LINE_LENGTH];
+    char base_dir[MAX_LINE_LENGTH];
+    char submissions_dir[MAX_LINE_LENGTH];
+
+    snprintf(filename, sizeof(filename), "/home/%s/Documents/StudyOS/courses.log", username);
+    snprintf(base_dir, sizeof(base_dir), "/home/%s/Documents/StudyOS", username);
+    snprintf(submissions_dir, sizeof(submissions_dir), "/home/%s/Documents/StudyOS/submissions", username);
+
+    mkdir(base_dir, 0777);
+    mkdir(submissions_dir, 0777);
+
+    FILE* log_file = fopen(filename, "a");
+    if (!log_file) {
+        perror("Error creating courses.log file");
+        return 1;
+    }
+    fclose(log_file);
+
     load_courses(filename);
 
     int case_id = atoi(argv[1]);
@@ -488,7 +516,7 @@ int main(int argc, char* argv[]) {
                         printf("Error: Course ID required.\n");
                         return 1;
                     }
-                    view_assignments(atoi(argv[2]));
+                    view_assignments(atoi(argv[3]));
                     break;
                 case 3:
                     if (argc < 8) {
@@ -502,7 +530,7 @@ int main(int argc, char* argv[]) {
                         printf("Error: Course ID, assignment ID, and file path required.\n");
                         return 1;
                     }
-                    submit_assignment(atoi(argv[3]), atoi(argv[4]), argv[5], filename);
+                    submit_assignment(atoi(argv[3]), atoi(argv[4]), argv[5], filename, submissions_dir);
                     break;
                 case 5:
                     if (argc < 5) {
