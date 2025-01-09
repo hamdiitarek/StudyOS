@@ -3,6 +3,9 @@
 #include <string.h>
 #include <pthread.h>
 #include <sys/stat.h>
+#include <sys/types.h>
+#include <sys/ipc.h>
+#include <sys/shm.h>
 #include <unistd.h>
 
 #define MAX_COURSES 10
@@ -32,18 +35,31 @@ typedef struct {
     pthread_mutex_t mutex;
 } CourseManager;
 
-CourseManager manager;
+CourseManager *manager;
+int shmid;
 
-void init_course_manager() {
-    manager.course_count = 0;
-    pthread_mutex_init(&manager.mutex, NULL);
+void initializeSharedMemory(key_t key) {
+    shmid = shmget(key, sizeof(CourseManager), IPC_CREAT | 0666);
+    if (shmid == -1) {
+        perror("shmget failed");
+        return;
+    }
+
+    manager = (CourseManager *) shmat(shmid, NULL, 0);
+    if (manager == (void *) -1) {
+        perror("shmat failed");
+        return;
+    }
+
+    manager->course_count = 0;
+    pthread_mutex_init(&manager->mutex, NULL);
 }
 
 void unique_id () {
     Course* course;
-    for (int x = 0; x < manager.course_count; x++)
+    for (int x = 0; x < manager->course_count; x++)
     {
-        course = &manager.courses[x];
+        course = &manager->courses[x];
         if (course->course_id != x+1)
         {
             course->course_id = x+1;
@@ -52,46 +68,46 @@ void unique_id () {
 }
 
 void add_course(const char* name, const char* filename) {
-    pthread_mutex_lock(&manager.mutex);
+    pthread_mutex_lock(&manager->mutex);
 
-    if (manager.course_count >= MAX_COURSES) {
-        pthread_mutex_unlock(&manager.mutex);
+    if (manager->course_count >= MAX_COURSES) {
+        pthread_mutex_unlock(&manager->mutex);
         printf("Error: Maximum course limit reached.\n");
         return;
     }
 
-    Course* course = &manager.courses[manager.course_count];
+    Course* course = &manager->courses[manager->course_count];
     strncpy(course->name, name, MAX_NAME_LENGTH - 1);
     course->assignment_count = 0;
-    course->course_id = manager.course_count + 1;
-    manager.course_count++;
+    course->course_id = manager->course_count + 1;
+    manager->course_count++;
 
     FILE* file = fopen(filename, "a");
     if (!file) {
         perror("Error opening file");
-        pthread_mutex_unlock(&manager.mutex);
+        pthread_mutex_unlock(&manager->mutex);
         return;
     }
 
     fprintf(file, "%d|%s|0\n", course->course_id, course->name); // No assignments yet
     fclose(file);
 
-    pthread_mutex_unlock(&manager.mutex);
+    pthread_mutex_unlock(&manager->mutex);
 }
 
 void add_assignment(int course_id, const char* name, int difficulty, int time, const char* due_date, const char* filename) {
-    pthread_mutex_lock(&manager.mutex);
+    pthread_mutex_lock(&manager->mutex);
 
-    if (course_id < 1 || course_id > manager.course_count) {
+    if (course_id < 1 || course_id > manager->course_count) {
         printf("Error: Invalid course ID.\n");
-        pthread_mutex_unlock(&manager.mutex);
+        pthread_mutex_unlock(&manager->mutex);
         return;
     }
 
-    Course* course = &manager.courses[course_id - 1];
+    Course* course = &manager->courses[course_id - 1];
     if (course->assignment_count >= MAX_ASSIGNMENTS) {
         printf("Error: Maximum assignment limit reached.\n");
-        pthread_mutex_unlock(&manager.mutex);
+        pthread_mutex_unlock(&manager->mutex);
         return;
     }
 
@@ -106,7 +122,7 @@ void add_assignment(int course_id, const char* name, int difficulty, int time, c
     FILE* file = fopen(filename, "r+");
     if (!file) {
         perror("Error opening file");
-        pthread_mutex_unlock(&manager.mutex);
+        pthread_mutex_unlock(&manager->mutex);
         return;
     }
 
@@ -121,7 +137,7 @@ void add_assignment(int course_id, const char* name, int difficulty, int time, c
     file = fopen(filename, "w");
     if (!file) {
         perror("Error reopening file");
-        pthread_mutex_unlock(&manager.mutex);
+        pthread_mutex_unlock(&manager->mutex);
         return;
     }
 
@@ -139,35 +155,34 @@ void add_assignment(int course_id, const char* name, int difficulty, int time, c
     }
 
     fclose(file);
-    pthread_mutex_unlock(&manager.mutex);
+    pthread_mutex_unlock(&manager->mutex);
 }
 
 void delete_course(int course_id, const char* filename) {
-    pthread_mutex_lock(&manager.mutex);
+    pthread_mutex_lock(&manager->mutex);
 
-    if (course_id < 1 || course_id > manager.course_count) {
+    if (course_id < 1 || course_id > manager->course_count) {
         printf("Error: Invalid course ID.\n");
-        pthread_mutex_unlock(&manager.mutex);
+        pthread_mutex_unlock(&manager->mutex);
         return;
     }
 
-    Course* course = &manager.courses[course_id - 1];
-    for (int i = course_id - 1; i < manager.course_count - 1; i++) {
-        manager.courses[i] = manager.courses[i + 1];
+    for (int i = course_id - 1; i < manager->course_count - 1; i++) {
+        manager->courses[i] = manager->courses[i + 1];
     }
-    manager.course_count = manager.course_count - 1;
+    manager->course_count--;
 
     FILE* file = fopen(filename, "w");
     if (!file) {
         perror("Error reopening file");
-        pthread_mutex_unlock(&manager.mutex);
+        pthread_mutex_unlock(&manager->mutex);
         return;
     }
 
     unique_id();
 
-    for (int i = 0; i < manager.course_count; i++) {
-        course = &manager.courses[i];
+    for (int i = 0; i < manager->course_count; i++) {
+        Course* course = &manager->courses[i];
         fprintf(file, "%d|%s|%d", course->course_id, course->name, course->assignment_count);
         if (course->assignment_count > 0)
         {
@@ -183,22 +198,22 @@ void delete_course(int course_id, const char* filename) {
     }
 
     fclose(file);
-    pthread_mutex_unlock(&manager.mutex);
+    pthread_mutex_unlock(&manager->mutex);
 }
 
 void delete_assignment(int course_id, int assignment_id, const char* filename) {
-    pthread_mutex_lock(&manager.mutex);
+    pthread_mutex_lock(&manager->mutex);
 
-    if (course_id < 1 || course_id > manager.course_count) {
+    if (course_id < 1 || course_id > manager->course_count) {
         printf("Error: Invalid course ID.\n");
-        pthread_mutex_unlock(&manager.mutex);
+        pthread_mutex_unlock(&manager->mutex);
         return;
     }
 
-    Course* course = &manager.courses[course_id - 1];
+    Course* course = &manager->courses[course_id - 1];
     if (assignment_id < 1 || assignment_id > course->assignment_count) {
         printf("Error: Invalid assignment ID.\n");
-        pthread_mutex_unlock(&manager.mutex);
+        pthread_mutex_unlock(&manager->mutex);
         return;
     }
 
@@ -210,7 +225,7 @@ void delete_assignment(int course_id, int assignment_id, const char* filename) {
     FILE* file = fopen(filename, "r+");
     if (!file) {
         perror("Error opening file");
-        pthread_mutex_unlock(&manager.mutex);
+        pthread_mutex_unlock(&manager->mutex);
         return;
     }
 
@@ -225,7 +240,7 @@ void delete_assignment(int course_id, int assignment_id, const char* filename) {
     file = fopen(filename, "w");
     if (!file) {
         perror("Error reopening file");
-        pthread_mutex_unlock(&manager.mutex);
+        pthread_mutex_unlock(&manager->mutex);
         return;
     }
 
@@ -243,22 +258,22 @@ void delete_assignment(int course_id, int assignment_id, const char* filename) {
     }
 
     fclose(file);
-    pthread_mutex_unlock(&manager.mutex);
+    pthread_mutex_unlock(&manager->mutex);
 }
 
 void submit_assignment(int course_id, int assignment_id, char* file_path, char* filename, char* submissions_dir) {
-    pthread_mutex_lock(&manager.mutex);
+    pthread_mutex_lock(&manager->mutex);
 
-    if (course_id < 1 || course_id > manager.course_count) {
+    if (course_id < 1 || course_id > manager->course_count) {
         printf("Error: Invalid course ID.\n");
-        pthread_mutex_unlock(&manager.mutex);
+        pthread_mutex_unlock(&manager->mutex);
         return;
     }
 
-    Course* course = &manager.courses[course_id - 1];
+    Course* course = &manager->courses[course_id - 1];
     if (assignment_id < 1 || assignment_id > course->assignment_count) {
         printf("Error: Invalid assignment ID.\n");
-        pthread_mutex_unlock(&manager.mutex);
+        pthread_mutex_unlock(&manager->mutex);
         return;
     }
 
@@ -279,7 +294,7 @@ void submit_assignment(int course_id, int assignment_id, char* file_path, char* 
         FILE* placeholder = fopen(file_path, "w");
         if (!placeholder) {
             perror("Error creating placeholder file");
-            pthread_mutex_unlock(&manager.mutex);
+            pthread_mutex_unlock(&manager->mutex);
             return;
         }
         fprintf(placeholder, "Placeholder file for assignment submission.\n");
@@ -307,12 +322,12 @@ void submit_assignment(int course_id, int assignment_id, char* file_path, char* 
         FILE* file = fopen(filename, "w");
         if (!file) {
             perror("Error updating courses.log");
-            pthread_mutex_unlock(&manager.mutex);
+            pthread_mutex_unlock(&manager->mutex);
             return;
         }
 
-        for (int i = 0; i < manager.course_count; i++) {
-            Course* c = &manager.courses[i];
+        for (int i = 0; i < manager->course_count; i++) {
+            Course* c = &manager->courses[i];
             fprintf(file, "%d|%s|%d", c->course_id, c->name, c->assignment_count);
             for (int j = 0; j < c->assignment_count; j++) {
                 Assignment* a = &c->assignments[j];
@@ -325,20 +340,20 @@ void submit_assignment(int course_id, int assignment_id, char* file_path, char* 
         fclose(file);
     }
 
-    pthread_mutex_unlock(&manager.mutex);
+    pthread_mutex_unlock(&manager->mutex);
 }
 
 
 void view_assignments(int course_id) {
-    pthread_mutex_lock(&manager.mutex);
+    pthread_mutex_lock(&manager->mutex);
 
-    if (course_id < 1 || course_id > manager.course_count) {
+    if (course_id < 1 || course_id > manager->course_count) {
         printf("Error: Invalid course ID.\n");
-        pthread_mutex_unlock(&manager.mutex);
+        pthread_mutex_unlock(&manager->mutex);
         return;
     }
 
-    Course* course = &manager.courses[course_id - 1];
+    Course* course = &manager->courses[course_id - 1];
     printf("Assignments for Course %s:\n", course->name);
     for (int i = 0; i < course->assignment_count; i++) {
         Assignment* assignment = &course->assignments[i];
@@ -347,24 +362,24 @@ void view_assignments(int course_id) {
                assignment->due_date, assignment->is_complete ? "Yes" : "No");
     }
 
-    pthread_mutex_unlock(&manager.mutex);
+    pthread_mutex_unlock(&manager->mutex);
 }
 
 void load_courses(const char* filename) {
-    pthread_mutex_lock(&manager.mutex);
+    pthread_mutex_lock(&manager->mutex);
 
     FILE* file = fopen(filename, "r");
     if (!file) {
         perror("Error opening file");
-        pthread_mutex_unlock(&manager.mutex);
+        pthread_mutex_unlock(&manager->mutex);
         return;
     }
 
-    manager.course_count = 0;
+    manager->course_count = 0;
     char line[MAX_LINE_LENGTH];
     
     while (fgets(line, sizeof(line), file)) {
-        Course* course = &manager.courses[manager.course_count];
+        Course* course = &manager->courses[manager->course_count];
         char* token = strtok(line, "|");
         
         // Parse course_id
@@ -401,30 +416,30 @@ void load_courses(const char* filename) {
             }
         }
 
-        manager.course_count++;
+        manager->course_count++;
     }
 
     fclose(file);
-    pthread_mutex_unlock(&manager.mutex);
+    pthread_mutex_unlock(&manager->mutex);
 }
 
 void view_all_courses() {
-    pthread_mutex_lock(&manager.mutex);
+    pthread_mutex_lock(&manager->mutex);
 
     printf("\nList of Courses :\n");
-    for (int i = 0; i < manager.course_count; i++) {
-        Course* course = &manager.courses[i];
+    for (int i = 0; i < manager->course_count; i++) {
+        Course* course = &manager->courses[i];
         printf("\nid %d) %s\n",course->course_id, course->name);
     }
 
-    pthread_mutex_unlock(&manager.mutex);
+    pthread_mutex_unlock(&manager->mutex);
 }
 
 void view_all_assignments() {
-    pthread_mutex_lock(&manager.mutex);
+    pthread_mutex_lock(&manager->mutex);
 
-    for (int i = 0; i < manager.course_count; i++) {
-        Course* course = &manager.courses[i];
+    for (int i = 0; i < manager->course_count; i++) {
+        Course* course = &manager->courses[i];
         printf("\nAssignments for Course -> %s:\n", course->name);
         for (int j = 0; j < course->assignment_count; j++) {
             Assignment* assignment = &course->assignments[j];
@@ -434,8 +449,9 @@ void view_all_assignments() {
         }
     }
 
-    pthread_mutex_unlock(&manager.mutex);
+    pthread_mutex_unlock(&manager->mutex);
 }
+
 char* get_username() {
     char* username = getenv("USER");
     if (username == NULL) {
@@ -444,10 +460,24 @@ char* get_username() {
     return username;
 }
 
+void cleanupSharedMemory() {
+    if (shmdt(manager) == -1) {
+        perror("shmdt failed");
+    }
+
+    if (shmctl(shmid, IPC_RMID, NULL) == -1) {
+        perror("shmctl failed");
+    }
+}
+
 
 int main(int argc, char* argv[]) {
     
-    init_course_manager();
+    key_t key = IPC_PRIVATE;
+    initializeSharedMemory(key);
+    if (manager == NULL) {
+        return 1;
+    }
 
     char *username = get_username();
 
@@ -549,4 +579,8 @@ int main(int argc, char* argv[]) {
             printf("Invalid id\n");
             break;
     }
+
+    cleanupSharedMemory();
+
+    return 0;
 }

@@ -162,7 +162,7 @@ assignment_manager() {
                             COURSE_ID=$(dialog --inputbox "Enter course ID:" 10 40 2>&1 >/dev/tty)
                             ASSIGNMENT_ID=$(dialog --inputbox "Enter assignment ID:" 10 40 2>&1 >/dev/tty)
                             dialog --msgbox "Select the Text file from popup to submit." 10 40
-                            FILE_PATH=$(zenity --file-selection --title="Select PDF File" --file-filter="*.txt" 2>/dev/null)
+                            FILE_PATH=$(zenity --file-selection --title="Select Text File" --file-filter="*.txt" 2>/dev/null)
                             clear
 
                             if [[ -n "$COURSE_ID" && -n "$ASSIGNMENT_ID" && -n "$FILE_PATH" ]]; then
