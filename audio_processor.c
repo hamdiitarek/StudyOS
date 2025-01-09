@@ -9,7 +9,7 @@
 
 #define SOUND_DIR "./sounds/" 
 
-int keep_playing = 1; 
+volatile int keep_playing = 1; 
 pid_t playback_pid = -1;       
 
 void handle_stop_signal(int signum) {
@@ -17,13 +17,6 @@ void handle_stop_signal(int signum) {
     if (playback_pid > 0) {
         kill(playback_pid, SIGKILL); 
     }
-}
-void handle_INT_signal(int signum){
-    keep_playing = 0;
-    if (playback_pid > 0) {
-        kill(playback_pid, SIGKILL); 
-    }
-    printf("\nStopped Sound\n");
 }
 
 void *play_sound(void *arg) {
@@ -44,12 +37,12 @@ void *play_sound(void *arg) {
             break;
         }
 
-        // parent process: Wait for playback to finish or be interrupted
+        // Parent process: Wait for playback to finish or be interrupted
         int status;
         waitpid(playback_pid, &status, 0);
         playback_pid = -1;
 
-        // if playback was stopped, exit the loop
+        // If playback was stopped, exit the loop
         if (!keep_playing) {
             break;
         }
@@ -67,7 +60,6 @@ int main(int argc, char *argv[]) {
     snprintf(sound_path, sizeof(sound_path), "%s%s", SOUND_DIR, argv[1]);
 
     signal(SIGTERM, handle_stop_signal);
-    signal(SIGINT, handle_INT_signal);
 
     pthread_t thread_id;
 
