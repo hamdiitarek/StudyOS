@@ -41,13 +41,13 @@ int shmid;
 void initializeSharedMemory(key_t key) {
     shmid = shmget(key, sizeof(CourseManager), IPC_CREAT | 0666);
     if (shmid == -1) {
-        perror("shmget failed");
+        perror("Error creating shared memory");
         return;
     }
 
     manager = (CourseManager *) shmat(shmid, NULL, 0);
-    if (manager == (void *) -1) {
-        perror("shmat failed");
+    if (manager == (CourseManager *) -1) {
+        perror("Error attaching shared memory");
         return;
     }
 

@@ -199,13 +199,40 @@ assignment_manager() {
     done
 }
 
+gpa_manager() {
+    COURSES_COUNT=$(dialog --inputbox "Enter the number of subjects:" 10 30 2>&1 >/dev/tty)
+
+
+    if [ -z "$COURSES_COUNT" ]; then
+        dialog --msgbox "Number of subjects cannot be empty" 10 30
+        exit 1
+    fi
+
+    echo "" > subject_data.txt
+
+    for (( i=1; i<=$COURSES_COUNT; i++ ))
+    do
+        credit_hours=$(dialog --inputbox "Enter credit hours for subject $i:" 10 30 2>&1 >/dev/tty)
+        grade=$(dialog --menu "Choose grade for subject $i:" 15 30 10 \
+            "4.0" A+ "4.0" A "3.7" A- "3.3" B- "3.0" B "2.7" B- \
+            "2.3" C+ "2.0" C "1.7" C- "1.3" D "1.0" D- "0.0" F 2>&1 >/dev/tty)
+
+        echo "$credit_hours $grade" >> subject_data.txt
+        clear
+    done
+
+    ./gpa_out $COURSES_COUNT subject_data.txt
+
+    rm -f subject_data.txt
+}
+
 USER_NAME=$(logname)
 
 cd /home/$USER_NAME/Documents/StudyOS/applications
 
 HEIGHT=15
 WIDTH=40
-CHOICE_HEIGHT=5
+CHOICE_HEIGHT=6
 TITLE="Main Menu"
 MENU="Choose an option:"
 
@@ -214,6 +241,7 @@ OPTIONS=(
     2 "Course and Assignment Manager"
     3 "Music Player"
     4 "PC Info"
+    5 "GPA Calculator"
 )
 
 while true; do
@@ -261,7 +289,10 @@ while true; do
             dialog --textbox "$temp_file" 20 70
             rm -f "$temp_file"
             ;;
-        
+        5)
+            gpa_manager
+            clear
+            ;;
         *)
             temp_logo=$(mktemp)
             show_logo > "$temp_logo"

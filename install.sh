@@ -34,6 +34,7 @@ chmod +x /usr/local/bin/StudyOS
 cp ./sound_player.sh $TARGET_DIR/sound_player.sh
 cp ./assignment_courses.c $TARGET_DIR/assignment_courses.c
 cp ./audio_processor.c $TARGET_DIR/audio_processor.c
+cp ./gpa_calculator.c $TARGET_DIR/gpa_calculator.c
 cp ./pomodoro.c $TARGET_DIR/pomodoro.c
 cp -r ./sounds $TARGET_DIR/sounds
 
@@ -41,6 +42,7 @@ chmod 755 /usr/local/bin/StudyOS
 chmod 644 "$TARGET_DIR/assignment_courses.c"
 chmod 644 "$TARGET_DIR/audio_processor.c"
 chmod 644 "$TARGET_DIR/pomodoro.c"
+chmod 644 "$TARGET_DIR/gpa_calculator.c"
 chmod -R 755 "$TARGET_DIR/sounds"
 chmod -R 755 "$TARGET_DIR"
 
@@ -49,7 +51,9 @@ cd "$TARGET_DIR"
 
 # Define source and binary file variables
 C_courses_SOURCE="assignment_courses.c"  
-C_courses_BINARY="assignment_courses"    
+C_courses_BINARY="assignment_courses" 
+C_gpa_SOURCE="gpa_calculator.c"
+C_gpa_BINARY="gpa_out"
 C_audio_SOURCE="audio_processor.c"  
 C_audio_BINARY="audio_processor"
 C_pomodoro_SOURCE="pomodoro.c"
@@ -75,6 +79,7 @@ compile_if_needed() {
 
 # Compile the C files
 compile_if_needed "$C_courses_SOURCE" "$C_courses_BINARY"
+compile_if_needed "$C_gpa_SOURCE" "$C_gpa_BINARY"
 compile_if_needed "$C_audio_SOURCE" "$C_audio_BINARY"
 
 gcc -o pomodoro pomodoro.c -lncurses -pthread
