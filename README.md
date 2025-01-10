@@ -122,9 +122,10 @@ Follow the on-screen menu to navigate features.
 
 This was a collaborative project for an Operating Systems course done by:
 - Hamdi Awad
-- Omar Abdelrady
 - Omar Walid
+- Omar Abdelrady
   
-![image](https://github.com/user-attachments/assets/25527e15-dfe2-4d16-941e-343c5a675f16)
+![image](https://github.com/user-attachments/assets/115ee2a8-75e8-48df-a6b7-073ab7555fe5)
+
 
 
