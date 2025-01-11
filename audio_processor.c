@@ -9,7 +9,7 @@
 
 #define SOUND_DIR "./sounds/" 
 
-volatile int keep_playing = 1; 
+ int keep_playing = 1; 
 pid_t playback_pid = -1;       
 
 void handle_stop_signal(int signum) {
