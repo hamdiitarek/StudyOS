@@ -9,7 +9,7 @@
 
 #define SOUND_DIR "./sounds/" 
 
- int keep_playing = 1; 
+int keep_playing = 1; 
 pid_t playback_pid = -1;       
 
 void handle_stop_signal(int signum) {
@@ -19,16 +19,20 @@ void handle_stop_signal(int signum) {
     }
 }
 void handle_INT_signal(int signum) { 
-    char msg[] = "CTRL + C pressed, Not Stopping";
+    char msg[] = "CTRL + C pressed, Stopping sound. ";
     char command[128];
 
     system("clear");
 
-    snprintf(command, sizeof(command), "dialog --msgbox \"%s\" 6 40", msg);
+    snprintf(command, sizeof(command), "dialog --infobox \"%s\" 6 40 & sleep 1", msg);
 
     system(command);
-
+    keep_playing = 0;
+    if (playback_pid > 0) {
+        kill(playback_pid, SIGKILL); 
+    }
 }
+
 
 void *play_sound(void *arg) {
     char *sound_file = (char *)arg;
@@ -48,12 +52,12 @@ void *play_sound(void *arg) {
             break;
         }
 
-        // Parent process: Wait for playback to finish or be interrupted
+        // parent process: Wait for playback to finish or be interrupted
         int status;
         waitpid(playback_pid, &status, 0);
         playback_pid = -1;
 
-        // If playback was stopped, exit the loop
+        // if playback was stopped, exit the loop
         if (!keep_playing) {
             break;
         }
@@ -71,7 +75,7 @@ int main(int argc, char *argv[]) {
     snprintf(sound_path, sizeof(sound_path), "%s%s", SOUND_DIR, argv[1]);
 
     signal(SIGTERM, handle_stop_signal);
-    signal(SIGINT, handle_INT_signal);
+    signal(SIGINT, handle_INT_signal); //signal handle
 
     pthread_t thread_id;
 
