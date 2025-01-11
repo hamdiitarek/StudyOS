@@ -1,8 +1,12 @@
 #!/bin/bash
 
+RED='\033[0;31m'
+GREEN='\033[0;32m'
+NC='\033[0m' 
+
 # Request sudo permissions
 if [ "$EUID" -ne 0 ]; then
-  echo "Please run as root"
+echo -e "${RED}Please run as root to be able to install StudyOS."
   exit
 fi
 
@@ -19,32 +23,28 @@ if [ ! -d "$TARGET_DIR" ]; then
     mkdir -p "$TARGET_DIR"
 fi
 
-sudo chown $USER_NAME:$USER_NAME /home/$USER_NAME/Documents/StudyOS/applications
 
 # Install dependencies
+echo -e "${GREEN}Installing dependencies..."
 apt -y install libncurses5-dev libncursesw5-dev
 apt -y install zenity
 apt -y install dialog
 apt -y install libnotify-bin
 apt -y install alsa-utils
 
-# Copy files to /usr/local/bin
+# Copy file to /usr/local/bin
 cp ./main2.sh /usr/local/bin/StudyOS
 chmod +x /usr/local/bin/StudyOS
+
+# Copy the files to the target directory
 cp ./sound_player.sh $TARGET_DIR/sound_player.sh
+chmod +x $TARGET_DIR/sound_player.sh
 cp ./assignment_courses.c $TARGET_DIR/assignment_courses.c
 cp ./audio_processor.c $TARGET_DIR/audio_processor.c
 cp ./gpa_calculator.c $TARGET_DIR/gpa_calculator.c
 cp ./pomodoro.c $TARGET_DIR/pomodoro.c
 cp -r ./sounds $TARGET_DIR/sounds
 
-chmod 755 /usr/local/bin/StudyOS
-chmod 644 "$TARGET_DIR/assignment_courses.c"
-chmod 644 "$TARGET_DIR/audio_processor.c"
-chmod 644 "$TARGET_DIR/pomodoro.c"
-chmod 644 "$TARGET_DIR/gpa_calculator.c"
-chmod -R 755 "$TARGET_DIR/sounds"
-chmod -R 755 "$TARGET_DIR"
 
 # Change to the target directory for compilation
 cd "$TARGET_DIR"
@@ -84,4 +84,6 @@ compile_if_needed "$C_audio_SOURCE" "$C_audio_BINARY"
 
 gcc -o pomodoro pomodoro.c -lncurses -pthread
 
-echo "Installation completed successfully."
+sudo chown -R $USER_NAME:$USER_NAME /home/$USER_NAME/Documents/StudyOS/applications/
+
+echo -e "Installation completed successfully. ${NC}\nYou can now run StudyOS by typing 'StudyOS' in the terminal."

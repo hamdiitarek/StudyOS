@@ -82,8 +82,6 @@ assignment_manager() {
                 # View All Courses
                 OUTPUT=$($C_BINARY "1")
                 dialog --msgbox "$OUTPUT" 20 80
-                # dialog --msgbox "Show the existing Courses" 6 50
-                # $C_BINARY 1 $rubbish
                 ;;
             2)
                 dialog --msgbox "Adding a Course" 6 50
@@ -98,11 +96,15 @@ assignment_manager() {
                 fi
                 ;;
             3)
-                dialog --msgbox "Deleting a Course" 6 50
-                clear
-                dialog --title "Log File" --textbox "courses.log" 15 50
-                COURSE_ID=$(dialog --inputbox "Enter course ID:" 10 40 2>&1 >/dev/tty)
-                $C_BINARY 3 $COURSE_ID
+                OUTPUT=$($C_BINARY "1")
+                dialog --msgbox "$OUTPUT" 20 80
+                                COURSE_ID=$(dialog --inputbox "Enter course ID:" 10 40 2>&1 >/dev/tty)
+                                if [[ "$COURSE_ID" =~ ^[1-9][0-9]*$ ]]; then
+                                    $C_BINARY 3 $COURSE_ID
+                                    dialog --msgbox "Course '$COURSE_ID' deleted successfully!" 10 40
+                                else
+                                    dialog --msgbox "Course ID is required to be a positive number." 10 40
+                                fi
                 ;;
             4)
                 exit_loop=true
@@ -132,18 +134,18 @@ assignment_manager() {
                             dialog --msgbox "$OUTPUT" 20 80
                             ;;
                         2) # View Course Assignments
-                            COURSE_ID=$(dialog --inputbox "Enter course ID:" 10 40 2>&1 >/dev/tty)
-                            clear
-
-                            if [[ -n "$COURSE_ID" ]]; then
-                                OUTPUT=$($C_BINARY "4" "2" "$COURSE_ID")
-                                dialog --msgbox "$OUTPUT" 20 80
-                            else
-                                dialog --msgbox "Course ID is required to view assignments." 10 40
-                            fi
+                            
+                                COURSE_ID=$(dialog --inputbox "Enter course ID:" 10 40 2>&1 >/dev/tty)
+                                if [[ "$COURSE_ID" =~ ^[1-9][0-9]*$ ]]; then
+                                    OUTPUT=$($C_BINARY "4" "2" "$COURSE_ID")
+                                    dialog --msgbox "$OUTPUT" 20 80
+                                else
+                                    dialog --msgbox "Course ID is required to view assignments." 10 40
+                                fi
                             
                             ;;
                         3) # Add Assignment
+                            
                             COURSE_ID=$(dialog --inputbox "Enter course ID:" 10 40 2>&1 >/dev/tty)
                             ASSIGNMENT_NAME=$(dialog --inputbox "Enter assignment name:" 10 40 2>&1 >/dev/tty)
                             DIFFICULTY=$(dialog --inputbox "Enter difficulty level (1-10):" 10 40 2>&1 >/dev/tty)
@@ -151,38 +153,37 @@ assignment_manager() {
                             DUE_DATE=$(dialog --calendar 'Enter Due Date'  5 50 1 1 2025 2>&1 >/dev/tty)
                             clear
                             
-                            if [[ -n "$COURSE_ID" && -n "$ASSIGNMENT_NAME" && -n "$DIFFICULTY" && -n "$TIME_REQUIRED" && -n "$DUE_DATE" ]]; then
+                            if [[ "$COURSE_ID" && "$DIFFICULTY" && "$TIME_REQUIRED" =~ ^[1-9][0-9]*$ && -n "$DUE_DATE" && -n "$ASSIGNMENT_NAME" ]]; then
                                 $C_BINARY 4 3 "$COURSE_ID" "$ASSIGNMENT_NAME" "$DIFFICULTY" "$TIME_REQUIRED" "$DUE_DATE"
                                 dialog --msgbox "Assignment '$ASSIGNMENT_NAME' added successfully!" 10 40
                             else
-                                dialog --msgbox "All fields are required to add an assignment." 10 40
+                                dialog --msgbox "All fields are required to be vaild to add an assignment." 10 40
                             fi
                             ;;
                         4) # Submit Assignment
-                            COURSE_ID=$(dialog --inputbox "Enter course ID:" 10 40 2>&1 >/dev/tty)
-                            ASSIGNMENT_ID=$(dialog --inputbox "Enter assignment ID:" 10 40 2>&1 >/dev/tty)
-                            dialog --msgbox "Select the Text file from popup to submit." 10 40
-                            FILE_PATH=$(zenity --file-selection --title="Select Text File" --file-filter="*.txt" 2>/dev/null)
+                                COURSE_ID=$(dialog --inputbox "Enter course ID:" 10 40 2>&1 >/dev/tty)
+                                ASSIGNMENT_ID=$(dialog --inputbox "Enter assignment ID:" 10 40 2>&1 >/dev/tty)
+                                if [[ "$ASSIGNMENT_ID" && "$COURSE_ID" =~ ^[1-9][0-9]*$ ]]; then
+                                    dialog --msgbox "Select the Text file from popup to submit." 10 40
+                                    FILE_PATH=$(zenity --file-selection --title="Select Text File" --file-filter="*.txt" 2>/dev/null)
+                                     $C_BINARY 4 4 "$COURSE_ID" "$ASSIGNMENT_ID" "$FILE_PATH"
+                                    dialog --msgbox "Assignment '$ASSIGNMENT_ID' submitted successfully!" 10 40
+                                else
+                                    dialog --msgbox "Course ID and Assignment ID is required tobe valid to submit an assignment." 10 40
+                                fi
                             clear
-
-                            if [[ -n "$COURSE_ID" && -n "$ASSIGNMENT_ID" && -n "$FILE_PATH" ]]; then
-                                $C_BINARY 4 4 "$COURSE_ID" "$ASSIGNMENT_ID" "$FILE_PATH"
-                                dialog --msgbox "Assignment '$ASSIGNMENT_ID' submitted successfully!" 10 40
-                            else
-                                dialog --msgbox "Course ID, assignment ID, and file path are required to submit an assignment." 10 40
-                            fi
                             ;;
                         5) # Delete Assignment
-                            COURSE_ID=$(dialog --inputbox "Enter course ID:" 10 40 2>&1 >/dev/tty)
-                            ASSIGNMENT_ID=$(dialog --inputbox "Enter assignment ID:" 10 40 2>&1 >/dev/tty)
+                            
+                                COURSE_ID=$(dialog --inputbox "Enter course ID:" 10 40 2>&1 >/dev/tty)
+                                ASSIGNMENT_ID=$(dialog --inputbox "Enter assignment ID:" 10 40 2>&1 >/dev/tty)
+                                if [[ "$ASSIGNMENT_ID" && "$COURSE_ID" =~ ^[1-9][0-9]*$ ]]; then
+                                    $C_BINARY 4 5 "$COURSE_ID" "$ASSIGNMENT_ID"
+                                    dialog --msgbox "Assignment '$ASSIGNMENT_ID' deleted successfully!" 10 40
+                                else
+                                    dialog --msgbox "Course ID and assignment ID are required to delete an assignment." 10 40
+                                fi
                             clear
-
-                            if [[ -n "$COURSE_ID" && -n "$ASSIGNMENT_ID" ]]; then
-                                $C_BINARY 4 5 "$COURSE_ID" "$ASSIGNMENT_ID"
-                                dialog --msgbox "Assignment '$ASSIGNMENT_ID' deleted successfully!" 10 40
-                            else
-                                dialog --msgbox "Course ID and assignment ID are required to delete an assignment." 10 40
-                            fi
                             ;;
                         *) # Invalid choice
                             break
@@ -200,7 +201,15 @@ assignment_manager() {
 }
 
 gpa_manager() {
-    COURSES_COUNT=$(dialog --inputbox "Enter the number of subjects:" 10 30 2>&1 >/dev/tty)
+    
+    while true; do
+        COURSES_COUNT=$(dialog --inputbox "Enter the number of subjects:" 10 30 2>&1 >/dev/tty)
+        if [[ "$COURSES_COUNT" =~ ^[1-9][0-9]*$ ]]; then
+            break
+        else
+            dialog --msgbox "Please enter a valid positive integer for the number of subjects." 10 30
+        fi
+    done
 
 
     if [ -z "$COURSES_COUNT" ]; then
@@ -260,16 +269,31 @@ while true; do
     # Handle user choice
     case $CHOICE in
         1)
-            work_input=$(dialog  --clear \
-                            --backtitle "StudyOS - Hamdi Awad, Omar Abdulaal, Omar Abdulrady" \
-                            --title "Work Session Time" \
-                            --inputbox "Please Enter Work Session Time In Minutes:" 8 40 \
-                            --output-fd 1)
-            break_input=$(dialog  --clear \
-                            --backtitle "StudyOS - Hamdi Awad, Omar Abdulaal, Omar Abdulrady" \
-                            --title "Break Session Time" \
-                            --inputbox "Please Enter Break Session Time In Minutes:" 8 40 \
-                            --output-fd 1)
+            while true; do
+                work_input=$(dialog  --clear \
+                                --backtitle "StudyOS - Hamdi Awad, Omar Abdulaal, Omar Abdulrady" \
+                                --title "Work Session Time" \
+                                --inputbox "Please Enter Work Session Time In Minutes:" 8 40 \
+                                --output-fd 1)
+                if [[ "$work_input" =~ ^[0-9]+$ ]]; then
+                    break
+                else
+                    dialog --msgbox "Please enter a valid number for work session time." 10 40
+                fi
+            done
+
+            while true; do
+                break_input=$(dialog  --clear \
+                                --backtitle "StudyOS - Hamdi Awad, Omar Abdulaal, Omar Abdulrady" \
+                                --title "Break Session Time" \
+                                --inputbox "Please Enter Break Session Time In Minutes:" 8 40 \
+                                --output-fd 1)
+                if [[ "$break_input" =~ ^[0-9]+$ ]]; then
+                    break
+                else
+                    dialog --msgbox "Please enter a valid number for break session time." 10 40
+                fi
+            done
 
             clear
             gnome-terminal -- ./pomodoro $work_input $break_input &

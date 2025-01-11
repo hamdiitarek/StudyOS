@@ -65,8 +65,6 @@ int main(int argc, char *argv[]) {
         return 1;
     }
 
-    display_alert("Time to take a break!", "Pomodoro Timer");
-
     WORK_DURATION = atoi(argv[1]) * 60;  
     BREAK_DURATION = atoi(argv[2]) * 60;
     remaining_time = WORK_DURATION;
